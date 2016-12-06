@@ -6,10 +6,17 @@
 
 ASideScrollerGameMode::ASideScrollerGameMode()
 {
-	// set default pawn class to our Blueprinted character
+	// Set default pawn class to our Blueprinted character.
 	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnBPClass(TEXT("/Game/SideScrollerCPP/Blueprints/SideScrollerCharacter"));
 	if (PlayerPawnBPClass.Class != NULL)
 	{
 		DefaultPawnClass = PlayerPawnBPClass.Class;
+	}
+
+	// Set default player controller to enable the mouse.
+	static ConstructorHelpers::FClassFinder<APlayerController> MousePlayerControllerBPClass(TEXT("/Game/SideScrollerCPP/Blueprints/MousePlayerController"));
+	if (MousePlayerControllerBPClass.Class != NULL)
+	{
+		PlayerControllerClass = MousePlayerControllerBPClass.Class;
 	}
 }
