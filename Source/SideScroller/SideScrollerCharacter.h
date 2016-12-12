@@ -18,7 +18,7 @@ class ASideScrollerCharacter : public ACharacter
 
 protected:
 
-	/** Called for side to side input */
+	/** Called for side to side input. */
 	void MoveRight(float Val);
 
 	/** Handle touch inputs. */
@@ -26,6 +26,9 @@ protected:
 
 	/** Handle touch stop event. */
 	void TouchStopped(const ETouchIndex::Type FingerIndex, const FVector Location);
+
+	/** Called for dash functionality. */
+	void Dash();
 
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* InputComponent) override;
