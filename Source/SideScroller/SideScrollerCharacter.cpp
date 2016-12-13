@@ -2,6 +2,7 @@
 
 #include "SideScroller.h"
 #include "SideScrollerCharacter.h"
+#include "DrawDebugHelpers.h"
 
 //#include "UnrealString.h"
 #include <EngineGlobals.h>
@@ -111,36 +112,65 @@ void ASideScrollerCharacter::Dash()
 		// Get the mouse location in world space.
 		FVector2D MouseScreenLoc = FVector2D(0.0f, 0.0f);
 		MouseController->GetMousePosition(MouseScreenLoc.X, MouseScreenLoc.Y);
-		FVector WorldLocation = FVector(0, MouseScreenLoc.X, MouseScreenLoc.Y);
-		FVector WorldDirection = FVector(-1, 0, 0) * 1000;
-		MouseController->DeprojectMousePositionToWorld(WorldLocation, WorldDirection);
-		// Deal with camera boom offset.
-		WorldLocation.Z -= 75.0f;
-		WorldLocation += WorldDirection;
 
-		// Have the character face the mouse position.
-		FRotator CharacterRotation = GetActorRotation();
-		int NewYaw = -90;
-		if ((WorldLocation.Y - GetActorLocation().Y) > 0)
+		// Convert mouse location to world space.
+		FVector WorldLoc = FVector(0, MouseScreenLoc.X, MouseScreenLoc.Y);
+		FVector WorldDir = FVector(-1, 0, 0);
+		MouseController->DeprojectMousePositionToWorld(WorldLoc, WorldDir);
+
+		// Deal with camera boom offset.
+		WorldLoc.Z -= 75.0f;
+		//WorldLocation += WorldDirection;
+		//WorldLocation.Normalize();
+
+		// Trace parameters.
+		FVector TraceStartLoc = WorldLoc;
+		FVector TraceEndLoc = TraceStartLoc + (WorldDir * 2000);
+		
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("End: (" + FString::SanitizeFloat(TraceEndLoc.X) + ", " + FString::SanitizeFloat(TraceEndLoc.Y) + ", " + FString::SanitizeFloat(TraceEndLoc.Z) + ")"));
+		FCollisionQueryParams TraceParams(FName(TEXT("MouseTrace")));
+
+		// Perform raycast.
+		UWorld* World = GetWorld();
+		FHitResult HitResult(ForceInit);
+		if (World)
 		{
-			NewYaw = 90;
+			World->LineTraceSingleByChannel(HitResult, TraceStartLoc, TraceEndLoc, ECC_WorldStatic, TraceParams);
+			DrawDebugLine(World, TraceStartLoc, TraceEndLoc, FColor::Yellow, true);
+			if (HitResult.GetActor() != NULL && HitResult.GetActor()->FindComponentByClass<UBoxComponent>()->ComponentHasTag("DashWall"))
+			{
+				// Have the character face the mouse position.
+				FRotator CharacterRotation = GetActorRotation();
+				int NewYaw = -90;
+				if ((WorldLoc.Y - GetActorLocation().Y) > 0)
+				{
+					NewYaw = 90;
+				}
+				FRotator NewRotation = FRotator(CharacterRotation.Pitch, NewYaw, CharacterRotation.Roll);
+				SetActorRotation(NewRotation);
+
+				SetActorLocation(HitResult.ImpactPoint);
+			}
+			else if (HitResult.GetActor() == NULL) 
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("NO HIT"));
+			}
 		}
 
-		//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("MouseXLoc: " + FString::FromInt(WorldLoc.Y)));
-		//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("CharacterXLoc: " + FString::FromInt(GetActorLocation().Y)));
-		//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("NewYaw: " + FString::FromInt(NewYaw)));
-
-		FRotator NewRotation = FRotator(CharacterRotation.Pitch, NewYaw, CharacterRotation.Roll);
-		SetActorRotation(NewRotation);
-
 		// Set character end location and dash state.
-		EndDashLocation = FVector(GetActorLocation().X, WorldLocation.Y * 2, WorldLocation.Z * 2);
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("EndDashLocation: (" + FString::SanitizeFloat(EndDashLocation.X) + ", " + FString::SanitizeFloat(EndDashLocation.Y) + ", " + FString::SanitizeFloat(EndDashLocation.Z) + ")"));
-		bIsDashing = true;
-		FVector NewLocation = FMath::VInterpTo(GetActorLocation(), EndDashLocation, GetWorld()->GetTimeSeconds(), InterpSpeed);
+		/*FVector DashVector = GetActorLocation() + WorldLocation;
+		DashVector.Normalize();
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("DashVector: (" + FString::SanitizeFloat(DashVector.X) + ", " + FString::SanitizeFloat(DashVector.Y) + ", " + FString::SanitizeFloat(DashVector.Z) + ")"));
+		DashVector += FVector(100);
+		EndDashLocation = FVector(GetActorLocation().X, DashVector.Y, GetActorLocation().Z);
+		SetActorLocation(GetActorLocation() + EndDashLocation);*/
+		//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("EndDashLocation: (" + FString::SanitizeFloat(EndDashLocation.X) + ", " + FString::SanitizeFloat(EndDashLocation.Y) + ", " + FString::SanitizeFloat(EndDashLocation.Z) + ")"));
+		//bIsDashing = true;
 
-		//FVector DashVector = GetActorLocation() - WorldLoc;
-		//GetCharacterMovement()->Velocity += FVector(0, DashVector.Y, (DashVector.Z + 75)) * 1000.0f;
+		// Get dash direction.
+		/*FVector DashVector = GetActorLocation() + WorldLocation;
+		DashVector.Normalize();
+		GetCharacterMovement()->Add(FVector(0, DashVector.Y, DashVector.Z) * 1000.0f);*/
 		///*GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("Vector: (" + FString::SanitizeFloat(WorldLoc.X) + ", " + FString::SanitizeFloat(WorldLoc.Y) + ", " + FString::SanitizeFloat(WorldLoc.Z) + ")"));
 		//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Vector: (" + FString::SanitizeFloat(GetActorLocation().X) + ", " + FString::SanitizeFloat(GetActorLocation().Y) + ", " + FString::SanitizeFloat(GetActorLocation().Z) + ")"));*/
 		//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("Vector: (" + FString::FromInt(0) + ", " + FString::SanitizeFloat(DashVector.Y) + ", " + FString::SanitizeFloat(-(DashVector.Z + 75)) + ")"));
