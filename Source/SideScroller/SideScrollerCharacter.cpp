@@ -10,7 +10,7 @@
 
 ASideScrollerCharacter::ASideScrollerCharacter() 
 	: bIsDashing(false),
-	  InterpSpeed(20.0f),
+	  InterpSpeed(0.5f),
 	  EndDashLocation(0, 0, 0),
 	  SideViewCameraComponent(CreateDefaultSubobject<UCameraComponent>(TEXT("SideViewCamera"))),
 	  CameraBoom(CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom")))
@@ -59,18 +59,20 @@ void ASideScrollerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	/*if (bIsDashing)
+	if (bIsDashing)
 	{
-		if ((GetActorLocation().X - EndDashLocation.X) < 1 && (GetActorLocation().Y - EndDashLocation.Y) < 1 && (GetActorLocation().Z - EndDashLocation.Z) < 1)
+		float StartTime = GetWorld()->GetTimeSeconds();
+		if ((GetActorLocation() - EndDashLocation).Size() > 100)
 		{
-			bIsDashing = false;
+			FVector NewLocation = FMath::VInterpTo(GetActorLocation(), EndDashLocation, StartTime, InterpSpeed);
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("" + FString::SanitizeFloat(InterpSpeed)));
+			SetActorLocation(NewLocation, true);
 		}
 		else
 		{
-			FVector NewLocation = FMath::VInterpTo(GetActorLocation(), EndDashLocation, GetWorld()->GetTimeSeconds(), InterpSpeed);
-			SetActorLocation(NewLocation, true);
+			bIsDashing = false;
 		}
-	}*/
+	}
 }
 
 void ASideScrollerCharacter::SetupPlayerInputComponent(class UInputComponent* InputComponent)
@@ -127,7 +129,7 @@ void ASideScrollerCharacter::Dash()
 		FVector TraceStartLoc = WorldLoc;
 		FVector TraceEndLoc = TraceStartLoc + (WorldDir * 2000);
 		
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("End: (" + FString::SanitizeFloat(TraceEndLoc.X) + ", " + FString::SanitizeFloat(TraceEndLoc.Y) + ", " + FString::SanitizeFloat(TraceEndLoc.Z) + ")"));
+		//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("End: (" + FString::SanitizeFloat(TraceEndLoc.X) + ", " + FString::SanitizeFloat(TraceEndLoc.Y) + ", " + FString::SanitizeFloat(TraceEndLoc.Z) + ")"));
 		FCollisionQueryParams TraceParams(FName(TEXT("MouseTrace")));
 
 		// Perform raycast.
@@ -149,7 +151,8 @@ void ASideScrollerCharacter::Dash()
 				FRotator NewRotation = FRotator(CharacterRotation.Pitch, NewYaw, CharacterRotation.Roll);
 				SetActorRotation(NewRotation);
 
-				SetActorLocation(HitResult.ImpactPoint);
+				EndDashLocation = HitResult.ImpactPoint;
+				bIsDashing = true;
 			}
 			else if (HitResult.GetActor() == NULL) 
 			{
