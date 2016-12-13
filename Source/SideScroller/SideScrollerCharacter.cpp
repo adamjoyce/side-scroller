@@ -2,11 +2,16 @@
 
 #include "SideScroller.h"
 #include "SideScrollerCharacter.h"
+
+//#include "UnrealString.h"
 #include <EngineGlobals.h>
 #include <Runtime/Engine/Classes/Engine/Engine.h>
 
 ASideScrollerCharacter::ASideScrollerCharacter() 
-	: SideViewCameraComponent(CreateDefaultSubobject<UCameraComponent>(TEXT("SideViewCamera"))),
+	: bIsDashing(false),
+	  InterpSpeed(20.0f),
+	  EndDashLocation(0, 0, 0),
+	  SideViewCameraComponent(CreateDefaultSubobject<UCameraComponent>(TEXT("SideViewCamera"))),
 	  CameraBoom(CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom")))
 {
 	// Set size for collision capsule.
@@ -48,6 +53,25 @@ ASideScrollerCharacter::ASideScrollerCharacter()
 //////////////////////////////////////////////////////////////////////////
 // Input
 
+
+void ASideScrollerCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	/*if (bIsDashing)
+	{
+		if ((GetActorLocation().X - EndDashLocation.X) < 1 && (GetActorLocation().Y - EndDashLocation.Y) < 1 && (GetActorLocation().Z - EndDashLocation.Z) < 1)
+		{
+			bIsDashing = false;
+		}
+		else
+		{
+			FVector NewLocation = FMath::VInterpTo(GetActorLocation(), EndDashLocation, GetWorld()->GetTimeSeconds(), InterpSpeed);
+			SetActorLocation(NewLocation, true);
+		}
+	}*/
+}
+
 void ASideScrollerCharacter::SetupPlayerInputComponent(class UInputComponent* InputComponent)
 {
 	// Set up gameplay key bindings.
@@ -84,25 +108,41 @@ void ASideScrollerCharacter::Dash()
 	{
 		APlayerController* const MouseController = World->GetFirstPlayerController();
 
-		float MouseXLoc = .0f;
-		float MouseYLoc = .0f;
-		MouseController->GetMousePosition(MouseXLoc, MouseYLoc);
-		FVector WorldLoc = FVector(MouseXLoc, MouseYLoc, 0);
-		FVector WorldDir = FVector(0, 0, 0);
-		MouseController->DeprojectMousePositionToWorld(WorldLoc, WorldDir);
+		// Get the mouse location in world space.
+		FVector2D MouseScreenLoc = FVector2D(0.0f, 0.0f);
+		MouseController->GetMousePosition(MouseScreenLoc.X, MouseScreenLoc.Y);
+		FVector WorldLocation = FVector(0, MouseScreenLoc.X, MouseScreenLoc.Y);
+		FVector WorldDirection = FVector(-1, 0, 0) * 1000;
+		MouseController->DeprojectMousePositionToWorld(WorldLocation, WorldDirection);
+		// Deal with camera boom offset.
+		WorldLocation.Z -= 75.0f;
+		WorldLocation += WorldDirection;
 
 		// Have the character face the mouse position.
 		FRotator CharacterRotation = GetActorRotation();
 		int NewYaw = -90;
-		if ((WorldLoc.Y - GetActorLocation().Y) > 0)
+		if ((WorldLocation.Y - GetActorLocation().Y) > 0)
 		{
 			NewYaw = 90;
 		}
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("MouseXLoc: " + FString::FromInt(WorldLoc.Y)));
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("CharacterXLoc: " + FString::FromInt(GetActorLocation().Y)));
-		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("NewYaw: " + FString::FromInt(NewYaw)));
+
+		//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("MouseXLoc: " + FString::FromInt(WorldLoc.Y)));
+		//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("CharacterXLoc: " + FString::FromInt(GetActorLocation().Y)));
+		//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("NewYaw: " + FString::FromInt(NewYaw)));
 
 		FRotator NewRotation = FRotator(CharacterRotation.Pitch, NewYaw, CharacterRotation.Roll);
 		SetActorRotation(NewRotation);
+
+		// Set character end location and dash state.
+		EndDashLocation = FVector(GetActorLocation().X, WorldLocation.Y * 2, WorldLocation.Z * 2);
+		GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("EndDashLocation: (" + FString::SanitizeFloat(EndDashLocation.X) + ", " + FString::SanitizeFloat(EndDashLocation.Y) + ", " + FString::SanitizeFloat(EndDashLocation.Z) + ")"));
+		bIsDashing = true;
+		FVector NewLocation = FMath::VInterpTo(GetActorLocation(), EndDashLocation, GetWorld()->GetTimeSeconds(), InterpSpeed);
+
+		//FVector DashVector = GetActorLocation() - WorldLoc;
+		//GetCharacterMovement()->Velocity += FVector(0, DashVector.Y, (DashVector.Z + 75)) * 1000.0f;
+		///*GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("Vector: (" + FString::SanitizeFloat(WorldLoc.X) + ", " + FString::SanitizeFloat(WorldLoc.Y) + ", " + FString::SanitizeFloat(WorldLoc.Z) + ")"));
+		//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("Vector: (" + FString::SanitizeFloat(GetActorLocation().X) + ", " + FString::SanitizeFloat(GetActorLocation().Y) + ", " + FString::SanitizeFloat(GetActorLocation().Z) + ")"));*/
+		//GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("Vector: (" + FString::FromInt(0) + ", " + FString::SanitizeFloat(DashVector.Y) + ", " + FString::SanitizeFloat(-(DashVector.Z + 75)) + ")"));
 	}
 }

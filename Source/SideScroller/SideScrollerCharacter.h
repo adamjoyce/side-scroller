@@ -31,12 +31,22 @@ protected:
 	void Dash();
 
 	// APawn interface
+	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* InputComponent) override;
 	// End of APawn interface
 
 
 public:
 	ASideScrollerCharacter();
+
+	// Character dash state.
+	bool bIsDashing;
+
+	// Character dash speed.
+	float InterpSpeed;
+
+	// Character end dash location.
+	FVector EndDashLocation;
 
 	/** Returns SideViewCameraComponent subobject **/
 	FORCEINLINE class UCameraComponent* GetSideViewCameraComponent() const { return SideViewCameraComponent; }
